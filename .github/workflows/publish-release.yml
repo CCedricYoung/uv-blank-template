@@ -1,0 +1,104 @@
+name: Publish Release
+# The following job is run when a commit changes pyproject.toml file:
+#   * Checks if the version of the project is the same of the latest release
+#   * If not, creates a new GitHub release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  get-version:
+    if: startsWith(github.ref, 'refs/tags/') && github.base_ref == 'main'
+    runs-on: "ubuntu-latest"
+    outputs:
+      version: ${{ steps.set_version.outputs.version }}
+    steps:
+      - id: check_out
+        name: Check out code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - id: set_version
+        name: Get version from pyproject.toml
+        run: |
+          version="${{ github.ref_name }}"
+          echo "version=$version" >> $GITHUB_ENV
+
+  gh-release:
+    needs: get-version
+    runs-on: "ubuntu-latest"
+    steps:
+      - id: check_out
+        name: Check out code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - id: release_if_needed
+        name: Release on version change merged
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          version="${{ github.ref_name }}"
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            /repos/CCedricYoung/uv-blank-template/releases \
+            -f tag_name=$version \
+            -f name="v$version" \
+            -F draft=false \
+            -F prerelease=false \
+            -F generate_release_notes=true
+
+  test-pypi:
+    needs: gh-release
+    environment: uv-blank-template-publish-test  # match name in test.PyPI.org OIDC
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for connection to pypi OIDC
+      contents: read  # For non-public repo
+    steps:
+      - name: checkout main
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: "latest"
+      - name: Install with Python 3.14
+        run: |
+          uv sync -p 3.14
+      - name: build package
+        run: |
+          uv build
+      - name: publish to test.pypi.org
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  production-pypi:
+    needs: test-pypi
+    environment: uv-blank-template-publish-production  # match name in www.PyPI.org OIDC
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for connection to pypi OIDC
+      contents: read  # For non-public repo
+    steps:
+      - name: checkout main
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          enable-cache: true
+      - name: Install with Python 3.14
+        run: |
+          uv sync -p 3.14
+      - name: build package
+        run: |
+          uv build
+      - name: publish to pypi.org
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
