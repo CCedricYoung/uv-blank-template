@@ -29,6 +29,8 @@ jobs:
   gh-release:
     needs: get-version
     runs-on: "ubuntu-latest"
+    permissions:
+      contents: write # Explicitly provide write permissions to the GITHUB_TOKEN
     steps:
       - id: check_out
         name: Check out code
