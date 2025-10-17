@@ -6,7 +6,7 @@ name: Tag and Release
 on:
   workflow_dispatch:
   repository_dispatch:
-    types: [trigger_tag_and_release]
+    types: ["Tag and Release (bot)"]
 
 jobs:
   gh-release:
