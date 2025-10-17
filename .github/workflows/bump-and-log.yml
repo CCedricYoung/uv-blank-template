@@ -34,14 +34,19 @@ jobs:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
+        id: compute-tag
         run: |
-          set -euo pipefail
+          set -exuo pipefail
           # Extract title/body from merge commit
           TITLE=$(git show -s --format=%s "$MERGE_SHA")
           BODY=$(git show -s --format=%b "$MERGE_SHA")
 
-          # Compute next tag using uv
-          TAG=$(uv version --bump patch)
+          # Bump patch version using uv (this will update pyproject.toml)
+          uv version --bump patch
+          TAG=$(sed -n "s/^version *= *\"\(.*\)\"/\1/p" pyproject.toml)
+
+          # Emit the tag as a step output for downstream steps
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
           # Prepend changelog entry
           [ -f CHANGELOG.md ] || printf '# Changelog\n\n' > CHANGELOG.md
@@ -59,8 +64,22 @@ jobs:
             cat CHANGELOG.md
           } > "$TMP"
           mv "$TMP" CHANGELOG.md
-          git add CHANGELOG.md
+          # Add pyproject if uv bumped the version, and the changelog
+          git add pyproject.toml CHANGELOG.md || true
           if ! git diff --cached --quiet; then
             git commit -m "chore(changelog): add entry for PR #${PR_NUMBER} - ${TITLE}"
             git push origin HEAD:"${BASE_REF}"
           fi
+
+      - name: Create and push tag
+        if: ${{ steps.compute-tag.outputs.tag != '' }}
+        env:
+          TAG: ${{ steps.compute-tag.outputs.tag }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -exuo pipefail
+
+          # Create annotated tag with changelog header as message (first line)
+          MESSAGE="Chore - release $TAG (PR #${PR_NUMBER})"
+          git tag -a "$TAG" -m "$MESSAGE"
+          git push origin "refs/tags/$TAG"
