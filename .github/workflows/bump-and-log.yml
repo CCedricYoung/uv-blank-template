@@ -70,7 +70,7 @@ jobs:
           # Add pyproject if uv bumped the version, and the changelog
           git add pyproject.toml CHANGELOG.md uv.lock || true
           if ! git diff --cached --quiet; then
-            git commit -m "(bot) bump and tag ${TAG}"
+            git commit -m "Bot - bump and tag ${TAG}"
             git push origin HEAD:"${BASE_REF}"
           fi
 
