@@ -46,27 +46,36 @@ jobs:
           set -exuo pipefail
           latest_release=$(gh api /repos/${GITHUB_REPOSITORY}/releases/latest --jq '.tag_name')
           echo "latest_release=$latest_release" >> $GITHUB_ENV
+      - id: check_gh_release
+        name: Check if GitHub release exists for current version
+        run: |
+          set -exuo pipefail
+
+          version="${{ steps.package_info.outputs.version }}"
+          latest_release="${{ env.latest_release }}"
+          if [[ $version == $latest_release ]]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
       - id: gh_tag_and_release_if_needed
+        if: steps.check_gh_release.outputs.exists == 'false'
         name: Get version from pyproject.toml
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -exuo pipefail
+
           version="${{ steps.package_info.outputs.version }}"
-          latest_release="${{ env.latest_release }}"
-          if [[ $version != $latest_release ]]; then
-            gh api \
-              --method POST \
-              -H "Accept: application/vnd.github+json" \
-              /repos/${GITHUB_REPOSITORY}/releases \
-              -f tag_name=$version \
-              -f name="v$version" \
-              -F draft=false \
-              -F prerelease=false \
-              -F generate_release_notes=true
-          else
-            echo "No new release needed. Current version ($version) matches latest release ($latest_release)."
-          fi
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${GITHUB_REPOSITORY}/releases \
+            -f tag_name=$version \
+            -f name="v$version" \
+            -F draft=false \
+            -F prerelease=false \
+            -F generate_release_notes=true
 
   test-pypi-release:
     needs: gh-release
