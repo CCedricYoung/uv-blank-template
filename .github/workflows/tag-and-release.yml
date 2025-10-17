@@ -77,8 +77,8 @@ jobs:
         with:
           repository-url: https://test.pypi.org/legacy/
 
-  production-pypi:
-    needs: test-pypi
+  production-pypi-release:
+    needs: test-pypi-release
     environment: uv-blank-template-publish-production # match name in www.PyPI.org OIDC
     runs-on: ubuntu-latest
     permissions:
