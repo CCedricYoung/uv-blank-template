@@ -9,7 +9,6 @@ on:
     types: [trigger_tag_and_release]
 
 jobs:
-
   gh-release:
     runs-on: "ubuntu-latest"
     permissions:
@@ -52,7 +51,7 @@ jobs:
               -F draft=false \
               -F prerelease=false \
               -F generate_release_notes=true
-          else
+          else:
             echo "No new release needed. Current version ($version) matches latest release ($latest_release)."
           fi
 
@@ -79,7 +78,36 @@ jobs:
       - name: build package
         run: |
           uv build
+      - name: Check TestPyPI for existing version
+        id: check_testpypi
+        run: |
+          set -exuo pipefail
+          version="${{ needs.gh-release.outputs.version }}"
+          # Extract package name from [project] name in pyproject.toml using awk (avoid python quoting)
+          package_name=$(awk '
+            BEGIN { inproj=0 }
+            /^\[project\]/ { inproj=1; next }
+            /^\[/ && inproj==1 { inproj=0 }
+            inproj==1 && /^[[:space:]]*name[[:space:]]*=/ {
+              sub(/^[^=]*=/, ""); gsub(/"/, ""); gsub(/^[ \t]+|[ \t]+$/, ""); print; exit
+            }
+          ' pyproject.toml)
+          if [ -z "$package_name" ]; then
+            echo "Could not determine package name from pyproject.toml" >&2
+            echo "exists=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "Checking TestPyPI for $package_name==$version"
+          # Use the per-version JSON endpoint which returns 200 when the release exists
+          url="https://test.pypi.org/pypi/${package_name}/${version}/json"
+          if curl -sSfI "$url" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: publish to test.pypi.org
+        if: steps.check_testpypi.outputs.exists == 'false'
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
         with:
           repository-url: https://test.pypi.org/legacy/
