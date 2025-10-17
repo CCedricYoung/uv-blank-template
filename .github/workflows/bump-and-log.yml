@@ -81,4 +81,4 @@ jobs:
             -H "Authorization: token ${{ github.token }}" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/${GITHUB_REPOSITORY}/dispatches \
-            -d '{"event_type": "trigger_publish_release"}'
+            -d '{"event_type": "trigger_tag_and_release"}'

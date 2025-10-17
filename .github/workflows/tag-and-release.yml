@@ -1,4 +1,4 @@
-name: Publish Release
+name: Tag and Release
 # The following job is run when a commit changes pyproject.toml file:
 #   * Checks if the version of the project is the same of the latest release
 #   * If not, creates a new GitHub release
@@ -6,83 +6,50 @@ name: Publish Release
 on:
   workflow_dispatch:
   repository_dispatch:
-    types: [trigger_publish_release]
-    inputs:
-      tag:
-        description: "Tag name to create and push"
-        required: false
-      pr_number:
-        description: "Pull request number"
-        required: false
-      base_ref:
-        description: "Base ref of the PR"
-        required: false
+    types: [trigger_tag_and_release]
 
 jobs:
-  create-tag:
-    if: ${{ github.event_name == 'workflow_call' && inputs.tag != '' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      - name: Create and push tag
-        env:
-          TAG: ${{ inputs.tag }}
-          PR_NUMBER: ${{ inputs.pr_number }}
-        run: |
-          set -exuo pipefail
-          MESSAGE="Chore - release $TAG (PR #${PR_NUMBER})"
-          git tag -a "$TAG" -m "$MESSAGE"
-          git push origin "refs/tags/$TAG"
-
-  get-version:
-    runs-on: "ubuntu-latest"
-    outputs:
-      version: ${{ steps.set_version.outputs.version }}
-    steps:
-      - id: check_out
-        name: Check out code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-      - id: set_version
-        name: Get version from pyproject.toml
-        run: |
-          version="${{ github.ref_name }}"
-          echo "version=$version" >> $GITHUB_ENV
 
   gh-release:
-    needs: get-version
     runs-on: "ubuntu-latest"
-    permissions:
-      contents: write # Explicitly provide write permissions to the GITHUB_TOKEN
+    outputs:
+      version: ${{ steps.project_version.outputs.version }}
     steps:
       - id: check_out
         name: Check out code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-      - id: release_if_needed
-        name: Release on version change merged
+      - id: project_version
+        name: Get version from pyproject.toml
+        run: |
+          version=$(sed -n "s/^version *= *\"\(.*\)\"/\1/p" pyproject.toml)
+          echo "version=$version" >> $GITHUB_OUTPUT
+      - id: latest_release
+        name: Get latest release version
+        run: |
+          latest_release=$(gh api /repos/${GITHUB_REPOSITORY}/releases/latest --jq '.tag_name')
+          echo "latest_release=$latest_release" >> $GITHUB_ENV
+      - id: gh_tag_and_release_if_needed
+        name: Get version from pyproject.toml
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          version="${{ github.ref_name }}"
-          gh api \
-            --method POST \
-            -H "Accept: application/vnd.github+json" \
-            /repos/CCedricYoung/uv-blank-template/releases \
-            -f tag_name=$version \
-            -f name="v$version" \
-            -F draft=false \
-            -F prerelease=false \
-            -F generate_release_notes=true
+          version="${{ steps.project_version.outputs.version }}"
+          latest_release="${{ env.latest_release }}"
+          if [[ $version != $latest_release ]]; then
+            gh api \
+              --method POST \
+              -H "Accept: application/vnd.github+json" \
+              /repos/${GITHUB_REPOSITORY}/releases \
+              -f tag_name=$version \
+              -f name="v$version" \
+              -F draft=false \
+              -F prerelease=false \
+              -F generate_release_notes=true
+          else:
+            echo "No new release needed. Current version ($version) matches latest release ($latest_release)."
+          fi
 
-  test-pypi:
+  test-pypi-release:
     needs: gh-release
     environment: uv-blank-template-publish-test # match name in test.PyPI.org OIDC
     runs-on: ubuntu-latest
