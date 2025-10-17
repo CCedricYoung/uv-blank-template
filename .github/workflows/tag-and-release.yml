@@ -113,7 +113,7 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
 
   production-pypi-release:
-    needs: test-pypi-release
+    needs: [gh-release, test-pypi-release]
     environment: uv-blank-template-publish-production # match name in www.PyPI.org OIDC
     runs-on: ubuntu-latest
     permissions:
@@ -135,5 +135,20 @@ jobs:
       - name: build package
         run: |
           uv build
+      - name: Check PyPI for existing version
+        id: check_pypi
+        run: |
+          set -exuo pipefail
+          version="${{ needs.gh-release.outputs.version }}"
+          package_name="${{ needs.gh-release.outputs.package_name }}"
+
+          echo "Checking PyPI for $package_name==$version"
+          url="https://pypi.org/pypi/${package_name}/${version}/json"
+          if curl -sSfI "$url" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
       - name: publish to pypi.org
+        if: steps.check_pypi.outputs.exists == 'false'
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
