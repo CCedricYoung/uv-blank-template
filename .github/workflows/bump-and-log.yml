@@ -25,47 +25,25 @@ jobs:
       - name: Sync Python 3.14 runtime
         run: |
           uv sync -p 3.14
-
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Resolve merge commit SHA
+      - name: Extract commit, compute tag and prepend changelog
         env:
-          MERGE_COMMIT_SHA_FROM_EVENT: ${{ github.event.pull_request.merge_commit_sha }}
-        run: |
-          echo "MERGE_SHA=${MERGE_COMMIT_SHA_FROM_EVENT}" >> "$GITHUB_ENV"
-
-      - name: Extract commit title and body
-        run: |
-          set -euo pipefail
-          TITLE=$(git show -s --format=%s "$MERGE_SHA")
-          BODY=$(git show -s --format=%b "$MERGE_SHA")
-          # Use single-quoted heredoc markers so special characters are preserved safely
-          echo "CHANGELOG_TITLE<<'EOF'" >> "$GITHUB_ENV"
-          printf '%s\n' "$TITLE" >> "$GITHUB_ENV"
-          echo "EOF" >> "$GITHUB_ENV"
-          echo "CHANGELOG_BODY<<'EOF'" >> "$GITHUB_ENV"
-          printf '%s\n' "$BODY" >> "$GITHUB_ENV"
-          echo "EOF" >> "$GITHUB_ENV"
-
-      - name: Compute next semver using uv
-        run: |
-          set -euo pipefail
-          NEXT=$(uv version --bump patch)
-          NEXT=${NEXT#v}
-          echo "NEXT_TAG=$NEXT" >> "$GITHUB_ENV"
-
-      - name: Prepend changelog entry
-        env:
-          TAG: ${{ env.NEXT_TAG }}
-          TITLE: ${{ env.CHANGELOG_TITLE }}
-          BODY: ${{ env.CHANGELOG_BODY }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
+          # Extract title/body from merge commit
+          TITLE=$(git show -s --format=%s "$MERGE_SHA")
+          BODY=$(git show -s --format=%b "$MERGE_SHA")
+
+          # Compute next tag using uv
+          TAG=$(uv version --bump patch)
+
+          # Prepend changelog entry
           [ -f CHANGELOG.md ] || printf '# Changelog\n\n' > CHANGELOG.md
           DATE=$(date +%F)
           TMP="$(mktemp)"
