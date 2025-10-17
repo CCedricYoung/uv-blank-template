@@ -1,3 +1,5 @@
+# 0.0.11 CI - chore - test existing test pypi release (#9) (2025-10-17)
+
 # 0.0.10 CI - chore - fix typo (#8) (2025-10-17)
 
 # 0.0.9 CI - chore - re-add write permission (#7) (2025-10-17)
