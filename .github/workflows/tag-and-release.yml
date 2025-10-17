@@ -24,7 +24,9 @@ jobs:
           version=$(sed -n "s/^version *= *\"\(.*\)\"/\1/p" pyproject.toml)
           echo "version=$version" >> $GITHUB_OUTPUT
       - id: latest_release
-        name: Get latest release version
+        name: Get latest gh release version
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           latest_release=$(gh api /repos/${GITHUB_REPOSITORY}/releases/latest --jq '.tag_name')
           echo "latest_release=$latest_release" >> $GITHUB_ENV
