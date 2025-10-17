@@ -1,3 +1,5 @@
+# 0.0.14 CI - chore - have prod pypi check existing (#12) (2025-10-17)
+
 # 0.0.13 CI - chore - fix typo (#11) (2025-10-17)
 
 # 0.0.12 CI - chore - fix python call (#10) (2025-10-17)
