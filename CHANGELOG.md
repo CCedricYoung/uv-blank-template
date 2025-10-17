@@ -1,3 +1,6 @@
+## 0.0.17
+CI - chore - change changelog format (#15)
+
 ## 0.0.16
 CI - chore - clarify name in gh actions (#14)
 
