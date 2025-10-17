@@ -54,11 +54,10 @@ jobs:
 
           # Prepend changelog entry
           [ -f CHANGELOG.md ] || printf '# Changelog\n\n' > CHANGELOG.md
-          DATE=$(date +%F)
           TMP="$(mktemp)"
           {
-            # Header: version, title and ISO date
-            printf '# %s %s (%s)\n' "$TAG" "$TITLE" "$DATE"
+            # Header: version, title
+            printf '## %s\n%s\n' "$TAG" "$TITLE"
             # Body (if present) and a separating blank line
             if [ -n "$BODY" ]; then
               printf '%s\n' "$BODY"
