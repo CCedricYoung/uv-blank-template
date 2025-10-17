@@ -27,15 +27,14 @@ lint:
 	uv run ruff check .
 	# pre-commit
 	SKIP=makefile uv run pre-commit run --show-diff-on-failure --from-ref origin/HEAD --to-ref HEAD
-	# lint .feature files
 
 ci-lint:
 	# make ci-lint
 	# only for use by CI through pre-commit
 	# lint code
+	uv run ruff format . --check
 	uv run ruff check .
 	# don't run pre-commit since CI already did
-	# lint .feature files
 
 build:
 	# make build

@@ -6,10 +6,22 @@ readme = "README.md"
 authors = [
     { name = "Cedric Young", email = "4129217+ccedricyoung@users.noreply.github.com" }
 ]
+maintainers = [
+    {name = "Domino Data Lab", email = "open-source@dominodatalab.com"}
+]
+include = [
+    { path = "CHANGELOG.md", format = "sdist" },
+    { path = "LICENSE", format = "sdist" },
+]
 requires-python = ">=3.12"
 dependencies = [
     "typer>=0.19.2",
 ]
+
+[project.urls]
+Homepage  = "https://github.com/ccedricyoung/uv-blank-template/wiki"
+Download  = "https://pypi.org/project/uv-blank-template/"
+"Source Code" = "https://github.com/ccedricyoung/uv-blank-template"
 
 [project.scripts]
 uv-blank-template = "uv_blank_template:main"
