@@ -67,7 +67,7 @@ jobs:
           # Add pyproject if uv bumped the version, and the changelog
           git add pyproject.toml CHANGELOG.md || true
           if ! git diff --cached --quiet; then
-            git commit -m "chore(changelog): add entry for PR #${PR_NUMBER} - ${TITLE}"
+            git commit -m "(bot) bump and release ${TAG}"
             git push origin HEAD:"${BASE_REF}"
           fi
 
