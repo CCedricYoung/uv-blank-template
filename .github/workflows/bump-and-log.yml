@@ -36,7 +36,7 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         id: compute-tag
         run: |
-          set -euo pipefail
+          set -exuo pipefail
           # Extract title/body from merge commit
           TITLE=$(git show -s --format=%s "$MERGE_SHA")
           BODY=$(git show -s --format=%b "$MERGE_SHA")
@@ -77,13 +77,9 @@ jobs:
           TAG: ${{ steps.compute-tag.outputs.tag }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          set -euo pipefail
-          # Don't fail if tag already exists
-          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists, skipping tag creation."
-            exit 0
-          fi
+          set -exuo pipefail
+
           # Create annotated tag with changelog header as message (first line)
-          MESSAGE="chore(release): $TAG (PR #${PR_NUMBER})"
+          MESSAGE="Chore - release $TAG (PR #${PR_NUMBER})"
           git tag -a "$TAG" -m "$MESSAGE"
           git push origin "refs/tags/$TAG"
