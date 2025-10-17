@@ -1,3 +1,6 @@
+## 0.0.18
+CI - fix - uv.lock update  (#16)
+
 ## 0.0.17
 CI - chore - change changelog format (#15)
 
