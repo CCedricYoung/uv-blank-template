@@ -11,6 +11,10 @@ jobs:
   on-merge:
     if: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' }}
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.compute-tag.outputs.tag }}
+      pr_number: ${{ steps.compute-tag.outputs.pr_number }}
+      base_ref: ${{ steps.compute-tag.outputs.base_ref }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,19 +71,14 @@ jobs:
           # Add pyproject if uv bumped the version, and the changelog
           git add pyproject.toml CHANGELOG.md || true
           if ! git diff --cached --quiet; then
-            git commit -m "chore(changelog): add entry for PR #${PR_NUMBER} - ${TITLE}"
+            git commit -m "(bot) bump and release ${TAG}"
             git push origin HEAD:"${BASE_REF}"
           fi
 
-      - name: Create and push tag
-        if: ${{ steps.compute-tag.outputs.tag != '' }}
-        env:
-          TAG: ${{ steps.compute-tag.outputs.tag }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+      - name: trigger publish-release workflow
         run: |
-          set -exuo pipefail
-
-          # Create annotated tag with changelog header as message (first line)
-          MESSAGE="Chore - release $TAG (PR #${PR_NUMBER})"
-          git tag -a "$TAG" -m "$MESSAGE"
-          git push origin "refs/tags/$TAG"
+            curl -X POST \
+            -H "Authorization: token ${{ github.token }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${GITHUB_REPOSITORY}/dispatches \
+            -d '{"event_type": "trigger_tag_and_release"}'
