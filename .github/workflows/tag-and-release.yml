@@ -31,10 +31,12 @@ jobs:
         name: Get packge name and version from pyproject.toml
         run: |
           set -exuo pipefail
-          version=$(uv python -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          source .venv/bin/activate
+
+          version=$(python -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
           echo "version=$version" >> $GITHUB_OUTPUT
 
-          package_name=$(uv python -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['name'])")
+          package_name=$(python -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['name'])")
           echo "package_name=$package_name" >> $GITHUB_OUTPUT
       - id: latest_release
         name: Get latest gh release version
