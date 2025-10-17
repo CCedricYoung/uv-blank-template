@@ -12,6 +12,8 @@ jobs:
 
   gh-release:
     runs-on: "ubuntu-latest"
+    permissions:
+      contents: write
     outputs:
       version: ${{ steps.project_version.outputs.version }}
     steps:
@@ -21,6 +23,7 @@ jobs:
       - id: project_version
         name: Get version from pyproject.toml
         run: |
+          set -exuo pipefail
           version=$(sed -n "s/^version *= *\"\(.*\)\"/\1/p" pyproject.toml)
           echo "version=$version" >> $GITHUB_OUTPUT
       - id: latest_release
@@ -28,6 +31,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          set -exuo pipefail
           latest_release=$(gh api /repos/${GITHUB_REPOSITORY}/releases/latest --jq '.tag_name')
           echo "latest_release=$latest_release" >> $GITHUB_ENV
       - id: gh_tag_and_release_if_needed
@@ -35,6 +39,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          set -exuo pipefail
           version="${{ steps.project_version.outputs.version }}"
           latest_release="${{ env.latest_release }}"
           if [[ $version != $latest_release ]]; then
