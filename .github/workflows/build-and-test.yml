@@ -27,7 +27,14 @@ jobs:
         run: |
           uv sync --dev
       - name: run pre-commit validations
-        run: uv run pre-commit run --show-diff-on-failure --from-ref origin/HEAD --to-ref HEAD
+        run: |
+          # Use the base branch HEAD for PRs, otherwise fall back to origin/HEAD
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            base_ref="origin/${{ github.event.pull_request.base.ref }}"
+          else
+            base_ref="origin/HEAD"
+          fi
+          uv run pre-commit run --show-diff-on-failure --from-ref "$base_ref" --to-ref HEAD
       - name: build the cucu python package
         run: uv build
       - name: install cucu globally
