@@ -28,7 +28,7 @@ jobs:
           version: "latest"
       - name: Sync Python 3.14 runtime
         run: |
-          uv sync -p 3.14
+          uv sync
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"

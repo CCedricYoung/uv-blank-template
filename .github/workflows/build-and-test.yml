@@ -18,7 +18,7 @@ jobs:
           version: "latest"
       - name: Sync Python runtime and install deps (dev)
         run: |
-          uv sync -p 3.14 --dev
+          uv sync --dev
       - name: run pre-commit validations
         run: uv run pre-commit run --show-diff-on-failure --from-ref origin/HEAD --to-ref HEAD
       - name: build the cucu python package
