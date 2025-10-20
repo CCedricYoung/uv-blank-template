@@ -2,11 +2,6 @@ name: Build and test
 
 on:
   push:
-  pull_request:
-    # Only run for these pull request actions. Exclude 'closed' so merged PRs
-    # (which trigger a 'closed' action with `merged: true`) won't run this
-    # workflow via the pull_request event.
-    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
   build:
