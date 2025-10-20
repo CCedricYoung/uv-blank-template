@@ -23,6 +23,7 @@ jobs:
           uv sync --dev
       - name: run pre-commit validations
         run: |
+          set -exuo pipefail
           # Use the base branch HEAD for PRs, otherwise fall back to origin/HEAD
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             base_ref="origin/${{ github.event.pull_request.base.ref }}"
