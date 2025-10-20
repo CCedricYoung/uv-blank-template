@@ -1,0 +1,122 @@
+name: Build and test
+
+on:
+  push:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: "latest"
+      - name: Sync Python runtime and install deps (dev)
+        run: |
+          uv sync --dev
+      - name: run pre-commit validations
+        run: |
+          uv run pre-commit run 
+          # --show-diff-on-failure --from-ref "$base_ref" --to-ref HEAD
+      - name: build the cucu python package
+        run: uv build
+
+  test:
+    needs: build
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: "latest"
+
+      - name: Sync Python runtime and install deps (dev)
+        # uv will create and manage the virtual environment and install dev deps
+        run: |
+          uv sync -p ${{ matrix.python-version }} --dev
+
+      - name: Run tests inside uv environment
+        run: |
+          uv run pytest -q
+
+  detect-bump:
+    needs: test
+    name: Detect bump+log push on main
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    outputs:
+      is_bump: ${{ steps.check_gh_release.outputs.is_bump }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: "latest"
+      - name: Sync Python 3.14 runtime
+        run: |
+          uv sync
+      - id: package_info
+        name: Get packge name and version from pyproject.toml
+        run: |
+          set -exuo pipefail
+          source .venv/bin/activate
+
+          version=$(python -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+          package_name=$(python -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['name'])")
+          echo "package_name=$package_name" >> $GITHUB_OUTPUT
+      - id: latest_release
+        name: Get latest gh release version
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -exuo pipefail
+          latest_release=$(gh api /repos/${GITHUB_REPOSITORY}/releases/latest --jq '.tag_name')
+          echo "latest_release=$latest_release" >> $GITHUB_ENV
+      - id: check_gh_release
+        name: Check if GitHub release exists for current version
+        run: |
+          set -exuo pipefail
+
+          version="${{ steps.package_info.outputs.version }}"
+          latest_release="${{ env.latest_release }}"
+          if [[ $version == $latest_release ]]; then
+            echo "is_bump=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_bump=false" >> $GITHUB_OUTPUT
+          fi
+
+  trigger-tag-and-release:
+    needs: detect-bump
+    name: Trigger tag-and-release
+    # Only run when the detect-bump job determined this was a bump+log commit
+    if: ${{ needs.detect-bump.outputs.is_bump == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Notify bump+log commit
+        run: |
+          echo "Detected bump+log commit (${GITHUB_SHA:-${{ github.sha }}}). Running post-bump tasks."
+      - name: trigger publish-release workflow
+        run: |
+          curl -X POST \
+          -H "Authorization: token ${{ github.token }}" \
+          -H "Accept: application/vnd.github+json" \
+          https://api.github.com/repos/${GITHUB_REPOSITORY}/dispatches \
+          -d '{"event_type": "Tag and Release (bot)"}'

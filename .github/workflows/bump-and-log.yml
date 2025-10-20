@@ -17,7 +17,7 @@ jobs:
       base_ref: ${{ steps.compute-tag.outputs.base_ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.base.ref }}
@@ -28,7 +28,7 @@ jobs:
           version: "latest"
       - name: Sync Python 3.14 runtime
         run: |
-          uv sync -p 3.14
+          uv sync
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
@@ -73,11 +73,3 @@ jobs:
             git commit -m "Bot - bump and tag ${TAG}"
             git push origin HEAD:"${BASE_REF}"
           fi
-
-      - name: trigger publish-release workflow
-        run: |
-            curl -X POST \
-            -H "Authorization: token ${{ github.token }}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${GITHUB_REPOSITORY}/dispatches \
-            -d '{"event_type": "Tag and Release (bot)"}'

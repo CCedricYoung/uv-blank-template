@@ -26,7 +26,7 @@ jobs:
           version: "latest"
       - name: Sync Python 3.14 runtime
         run: |
-          uv sync -p 3.14
+          uv sync
       - id: package_info
         name: Get packge name and version from pyproject.toml
         run: |
@@ -96,7 +96,7 @@ jobs:
           version: "latest"
       - name: Install with Python 3.14
         run: |
-          uv sync -p 3.14
+          uv sync
       - name: build package
         run: |
           uv build
@@ -140,7 +140,7 @@ jobs:
           enable-cache: true
       - name: Install with Python 3.14
         run: |
-          uv sync -p 3.14
+          uv sync
       - name: build package
         run: |
           uv build
