@@ -1,0 +1,53 @@
+name: Build and test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: "latest"
+      - name: Sync Python runtime and install deps (dev)
+        run: |
+          uv sync -p 3.14 --dev
+      - name: run pre-commit validations
+        run: uv run pre-commit run --show-diff-on-failure --from-ref origin/HEAD --to-ref HEAD
+      - name: build the cucu python package
+        run: uv build
+      - name: install cucu globally
+        run: pip install dist/cucu-*.tar.gz
+
+  test:
+    needs: build
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: "latest"
+
+      - name: Sync Python runtime and install deps (dev)
+        # uv will create and manage the virtual environment and install dev deps
+        run: |
+          uv sync -p ${{ matrix.python-version }} --dev
+
+      - name: Run tests inside uv environment
+        run: |
+          uv run pytest -q
