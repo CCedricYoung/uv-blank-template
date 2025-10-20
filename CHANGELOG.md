@@ -1,3 +1,6 @@
+## 0.0.19
+CI - add - build workflow (#17)
+
 ## 0.0.18
 CI - fix - uv.lock update  (#16)
 

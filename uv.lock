@@ -320,7 +320,7 @@ wheels = [
 
 [[package]]
 name = "uv-blank-template"
-version = "0.0.18"
+version = "0.0.19"
 source = { editable = "." }
 dependencies = [
     { name = "typer" },
