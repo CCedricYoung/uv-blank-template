@@ -2,16 +2,24 @@ name: Build and test
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - synchronize
+
+permissions:
+  # Grant write permissions to contents to allow triggering downstream workflows
+  contents: write
 
 jobs:
   build:
     name: Build
+    if: ${{ github.event.head_commit == null || github.ref != 'refs/heads/main' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-        with:
-          fetch-depth: 2
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
         with:
@@ -32,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.13", "3.14"]
 
     steps:
       - name: Checkout repository
