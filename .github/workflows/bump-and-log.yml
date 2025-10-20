@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [closed]
 
+permissions:
+  # Grant write permissions to contents to allow updating files on merge
+  contents: write
+
 jobs:
   on-merge:
     if: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' }}

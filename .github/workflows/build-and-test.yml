@@ -2,11 +2,6 @@ name: Build and test
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    types:
-      - synchronize
 
 permissions:
   # Grant write permissions to contents to allow triggering downstream workflows
