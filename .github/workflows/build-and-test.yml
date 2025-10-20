@@ -3,10 +3,16 @@ name: Build and test
 on:
   push:
   pull_request:
+    # Only run for these pull request actions. Exclude 'closed' so merged PRs
+    # (which trigger a 'closed' action with `merged: true`) won't run this
+    # workflow via the pull_request event.
+    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
   build:
     name: Build
+    # Skip for merges since this will be invoked by the commit from the bump-and-log workflow
+    if: ${{ !(github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true) && !(github.event_name == 'push' && contains(github.head_commit.message, 'Merge pull request')) }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
