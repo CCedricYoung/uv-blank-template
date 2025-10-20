@@ -61,34 +61,51 @@ jobs:
   detect-bump:
     needs: test
     name: Detect bump+log push on main
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     outputs:
-      is_bump: ${{ steps.detect.outputs.is_bump }}
+      is_bump: ${{ steps.check_gh_release.outputs.is_bump }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Detect bump+log commit
-        id: detect
+      - name: Check out code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: "latest"
+      - name: Sync Python 3.14 runtime
         run: |
-          python - <<'PY'
-          import os, json
-          ev = os.environ.get('GITHUB_EVENT_NAME','')
-          ref = os.environ.get('GITHUB_REF','')
-          is_bump = 'false'
-          event_path = os.environ.get('GITHUB_EVENT_PATH')
-          if event_path:
-              with open(event_path, 'r') as f:
-                  event = json.load(f)
-              if ev == 'push' and ref == 'refs/heads/main':
-                  head = event.get('head_commit') or {}
-                  msg = (head.get('message') or '').lower()
-                  if 'bump' in msg and 'log' in msg:
-                      is_bump = 'true'
-          # write output
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
-              out.write(f'is_bump={is_bump}\n')
-          print('is_bump='+is_bump)
-          PY
+          uv sync
+      - id: package_info
+        name: Get packge name and version from pyproject.toml
+        run: |
+          set -exuo pipefail
+          source .venv/bin/activate
+
+          version=$(python -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+          package_name=$(python -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['name'])")
+          echo "package_name=$package_name" >> $GITHUB_OUTPUT
+      - id: latest_release
+        name: Get latest gh release version
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -exuo pipefail
+          latest_release=$(gh api /repos/${GITHUB_REPOSITORY}/releases/latest --jq '.tag_name')
+          echo "latest_release=$latest_release" >> $GITHUB_ENV
+      - id: check_gh_release
+        name: Check if GitHub release exists for current version
+        run: |
+          set -exuo pipefail
+
+          version="${{ steps.package_info.outputs.version }}"
+          latest_release="${{ env.latest_release }}"
+          if [[ $version == $latest_release ]]; then
+            echo "is_bump=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_bump=false" >> $GITHUB_OUTPUT
+          fi
 
   trigger-tag-and-release:
     needs: detect-bump
