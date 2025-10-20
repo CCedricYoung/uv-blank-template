@@ -2,6 +2,9 @@ name: Build and test
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
 
 permissions:
   # Grant write permissions to contents to allow triggering downstream workflows
@@ -35,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.13", "3.14"]
 
     steps:
       - name: Checkout repository
