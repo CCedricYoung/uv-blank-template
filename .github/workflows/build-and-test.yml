@@ -57,3 +57,55 @@ jobs:
       - name: Run tests inside uv environment
         run: |
           uv run pytest -q
+
+  detect-bump:
+    needs: test
+    name: Detect bump+log push on main
+    runs-on: ubuntu-latest
+    outputs:
+      is_bump: ${{ steps.detect.outputs.is_bump }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Detect bump+log commit
+        id: detect
+        run: |
+          python - <<'PY'
+          import os, json
+          ev = os.environ.get('GITHUB_EVENT_NAME','')
+          ref = os.environ.get('GITHUB_REF','')
+          is_bump = 'false'
+          event_path = os.environ.get('GITHUB_EVENT_PATH')
+          if event_path:
+              with open(event_path, 'r') as f:
+                  event = json.load(f)
+              if ev == 'push' and ref == 'refs/heads/main':
+                  head = event.get('head_commit') or {}
+                  msg = (head.get('message') or '').lower()
+                  if 'bump' in msg and 'log' in msg:
+                      is_bump = 'true'
+          # write output
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write(f'is_bump={is_bump}\n')
+          print('is_bump='+is_bump)
+          PY
+
+  trigger-tag-and-release:
+    needs: detect-bump
+    name: Trigger tag-and-release
+    # Only run when the detect-bump job determined this was a bump+log commit
+    if: ${{ needs.detect-bump.outputs.is_bump == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Notify bump+log commit
+        run: |
+          echo "Detected bump+log commit (${GITHUB_SHA:-${{ github.sha }}}). Running post-bump tasks."
+      - name: trigger publish-release workflow
+        run: |
+          curl -X POST \
+          -H "Authorization: token ${{ github.token }}" \
+          -H "Accept: application/vnd.github+json" \
+          https://api.github.com/repos/${GITHUB_REPOSITORY}/dispatches \
+          -d '{"event_type": "Tag and Release (bot)"}'
