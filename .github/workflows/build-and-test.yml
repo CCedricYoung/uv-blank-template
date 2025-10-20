@@ -3,6 +3,10 @@ name: Build and test
 on:
   push:
 
+permissions:
+  # Grant write permissions to contents to allow triggering downstream workflows
+  contents: write
+
 jobs:
   build:
     name: Build
